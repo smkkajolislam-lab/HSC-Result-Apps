@@ -556,7 +556,7 @@ jobs:
           }
           EOF_7
 
-      - name: Build APK
+      - name: Build  APK
         run: gradle assembleDebug --no-daemon --stacktrace
 
       - name: Rename APK
