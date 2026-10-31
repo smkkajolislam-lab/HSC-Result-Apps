@@ -1,0 +1,579 @@
+name: Build HSC APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Generate Android project
+        run: |
+          set -e
+          mkdir -p .
+          cat > settings.gradle <<'EOF_0'
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          rootProject.name = 'HSCResult'
+          include ':app'
+          EOF_0
+          mkdir -p .
+          cat > build.gradle <<'EOF_1'
+          plugins {
+              id 'com.android.application' version '8.5.2' apply false
+          }
+          EOF_1
+          mkdir -p .
+          cat > gradle.properties <<'EOF_2'
+          org.gradle.jvmargs=-Xmx2g -Dfile.encoding=UTF-8
+          EOF_2
+          mkdir -p app
+          cat > app/build.gradle <<'EOF_3'
+          plugins {
+              id 'com.android.application'
+          }
+
+          android {
+              namespace 'com.shopnokolom.hsc'
+              compileSdk 34
+
+              defaultConfig {
+                  applicationId 'com.shopnokolom.hsc'
+                  minSdk 24
+                  targetSdk 34
+                  versionCode 1
+                  versionName '1.0'
+              }
+
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+          }
+          EOF_3
+          mkdir -p app/src/main
+          cat > app/src/main/AndroidManifest.xml <<'EOF_4'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <application
+                  android:allowBackup="false"
+                  android:icon="@drawable/ic_launcher"
+                  android:label="@string/app_name"
+                  android:theme="@android:style/Theme.Material.NoActionBar">
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF_4
+          mkdir -p app/src/main/res/values
+          cat > app/src/main/res/values/strings.xml <<'EOF_5'
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <string name="app_name">HSC রেজাল্ট ২০২৬</string>
+          </resources>
+          EOF_5
+          mkdir -p app/src/main/res/drawable
+          cat > app/src/main/res/drawable/ic_launcher.xml <<'EOF_6'
+          <?xml version="1.0" encoding="utf-8"?>
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              android:width="108dp"
+              android:height="108dp"
+              android:viewportWidth="108"
+              android:viewportHeight="108">
+              <path android:fillColor="#070A1A" android:pathData="M0,0h108v108h-108z" />
+              <path android:fillColor="#4F7CFF" android:pathData="M54,54m-44,0a44,44 0,1 1,88 0a44,44 0,1 1,-88 0" />
+              <path android:fillColor="#FFFFFF" android:pathData="M54,30L86,46L54,62L22,46Z" />
+              <path android:fillColor="#C9D6FF" android:pathData="M36,56L36,72Q54,84 72,72L72,56L54,66Z" />
+              <path android:fillColor="#FFD24D" android:pathData="M84,48h3v20h-3z" />
+          </vector>
+          EOF_6
+          mkdir -p app/src/main/java/com/shopnokolom/hsc
+          cat > app/src/main/java/com/shopnokolom/hsc/MainActivity.java <<'EOF_7'
+          package com.shopnokolom.hsc;
+
+          import android.app.Activity;
+          import android.content.ClipData;
+          import android.content.ClipboardManager;
+          import android.content.Context;
+          import android.content.Intent;
+          import android.graphics.Typeface;
+          import android.graphics.drawable.GradientDrawable;
+          import android.net.Uri;
+          import android.os.Bundle;
+          import android.text.Editable;
+          import android.text.Html;
+          import android.text.InputType;
+          import android.text.TextWatcher;
+          import android.view.Gravity;
+          import android.view.View;
+          import android.view.ViewGroup;
+          import android.view.Window;
+          import android.widget.ArrayAdapter;
+          import android.widget.EditText;
+          import android.widget.LinearLayout;
+          import android.widget.ScrollView;
+          import android.widget.Spinner;
+          import android.widget.TextView;
+          import android.widget.Toast;
+
+          public class MainActivity extends Activity {
+
+              static final int BG = 0xFF070A1A, CARD = 0xFF11162E, TXT = 0xFFE8ECFF, MUTED = 0xFF9AA4CF;
+              static final int ACC = 0xFF4F7CFF, FIELD = 0xFF0B1022, LINE = 0xFF222B52, PINK = 0xFFFF6B9A;
+
+              static final String ONLINE = "https://eboardresults.com/v2/home";
+              static final String ALT = "https://educationboardresults.gov.bd/";
+              static final String PROMO1 = "https://www.profitableratecpmnetwork.com/twarbz9mr?key=3a590b661353297a1253e4792b403d32";
+              static final String PROMO2 = "https://www.profitableratecpmnetwork.com/xrd9v9wpn0?key=a203242fc9cf4e9e595adfb8d202137d";
+
+              static final String[] BN = {"ঢাকা", "রাজশাহী", "কুমিল্লা", "যশোর", "চট্টগ্রাম", "বরিশাল", "সিলেট", "দিনাজপুর", "ময়মনসিংহ", "মাদ্রাসা", "কারিগরি"};
+              static final String[] CODE = {"DHA", "RAJ", "COM", "JES", "CHI", "BAR", "SYL", "DIN", "MYM", "MAD", "TEC"};
+
+              LinearLayout root;
+              Spinner board;
+              EditText roll;
+              TextView prev;
+
+              @Override
+              protected void onCreate(Bundle b) {
+                  super.onCreate(b);
+                  Window w = getWindow();
+                  w.setStatusBarColor(BG);
+                  w.setNavigationBarColor(BG);
+                  ScrollView sv = new ScrollView(this);
+                  sv.setBackgroundColor(BG);
+                  root = new LinearLayout(this);
+                  root.setOrientation(LinearLayout.VERTICAL);
+                  root.setPadding(dp(16), dp(24), dp(16), dp(36));
+                  sv.addView(root, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+                  build();
+                  setContentView(sv);
+              }
+
+              // ---------- helpers ----------
+              int dp(int v) {
+                  return (int) (v * getResources().getDisplayMetrics().density + 0.5f);
+              }
+
+              LinearLayout.LayoutParams lp(int topDp) {
+                  LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                  p.topMargin = dp(topDp);
+                  return p;
+              }
+
+              GradientDrawable shape(int fill, int stroke, int r) {
+                  GradientDrawable g = new GradientDrawable();
+                  g.setColor(fill);
+                  g.setCornerRadius(dp(r));
+                  if (stroke != 0) g.setStroke(dp(1), stroke);
+                  return g;
+              }
+
+              TextView tv(CharSequence t, int sp, int color, boolean bold) {
+                  TextView v = new TextView(this);
+                  v.setText(t);
+                  v.setTextSize(sp);
+                  v.setTextColor(color);
+                  v.setLineSpacing(0, 1.25f);
+                  if (bold) v.setTypeface(Typeface.DEFAULT_BOLD);
+                  return v;
+              }
+
+              CharSequence html(String s) {
+                  return Html.fromHtml(s, Html.FROM_HTML_MODE_COMPACT);
+              }
+
+              LinearLayout card(int top) {
+                  LinearLayout c = new LinearLayout(this);
+                  c.setOrientation(LinearLayout.VERTICAL);
+                  c.setPadding(dp(16), dp(14), dp(16), dp(16));
+                  c.setBackground(shape(CARD, LINE, 16));
+                  root.addView(c, lp(top));
+                  return c;
+              }
+
+              LinearLayout section(String title) {
+                  root.addView(tv(title, 20, TXT, true), lp(28));
+                  return card(10);
+              }
+
+              void button(LinearLayout parent, String label, int fill, int stroke, final Runnable r) {
+                  TextView t = tv(label, 16, 0xFFFFFFFF, true);
+                  t.setGravity(Gravity.CENTER);
+                  t.setPadding(dp(12), dp(14), dp(12), dp(14));
+                  t.setBackground(shape(fill, stroke, 12));
+                  t.setOnClickListener(new View.OnClickListener() {
+                      public void onClick(View v) {
+                          r.run();
+                      }
+                  });
+                  parent.addView(t, lp(10));
+              }
+
+              void bullets(LinearLayout c, String[] items) {
+                  for (int i = 0; i < items.length; i++) {
+                      c.addView(tv(html("•  " + items[i]), 15, TXT, false), lp(i == 0 ? 0 : 8));
+                  }
+              }
+
+              void steps(LinearLayout c, String[] items) {
+                  for (int i = 0; i < items.length; i++) {
+                      c.addView(tv(html("<b>" + (i + 1) + ".</b>  " + items[i]), 15, TXT, false), lp(i == 0 ? 0 : 8));
+                  }
+              }
+
+              void fmt(LinearLayout parent, String s) {
+                  TextView t = tv(s, 17, 0xFF8FB0FF, true);
+                  t.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
+                  t.setGravity(Gravity.CENTER);
+                  t.setPadding(dp(10), dp(12), dp(10), dp(12));
+                  t.setBackground(shape(FIELD, LINE, 10));
+                  parent.addView(t, lp(8));
+              }
+
+              void open(String url) {
+                  try {
+                      startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+                  } catch (Exception e) {
+                      Toast.makeText(this, "ব্রাউজার খোলা যায়নি", Toast.LENGTH_SHORT).show();
+                  }
+              }
+
+              void promo(String title, String url) {
+                  LinearLayout c = card(18);
+                  c.addView(tv(title, 16, TXT, true));
+                  c.addView(tv("ট্যাপ করে স্পনসরের পেজ খুলুন • স্পনসর্ড", 13, MUTED, false), lp(4));
+                  final String u = url;
+                  c.setOnClickListener(new View.OnClickListener() {
+                      public void onClick(View v) {
+                          open(u);
+                      }
+                  });
+              }
+
+              String rollEn() {
+                  String s = roll.getText().toString().trim();
+                  StringBuilder sb = new StringBuilder();
+                  for (int i = 0; i < s.length(); i++) {
+                      char ch = s.charAt(i);
+                      if (ch >= '\u09E6' && ch <= '\u09EF') ch = (char) ('0' + (ch - '\u09E6'));
+                      sb.append(ch);
+                  }
+                  return sb.toString();
+              }
+
+              String msg() {
+                  String r = rollEn();
+                  return "HSC " + CODE[board.getSelectedItemPosition()] + " " + (r.length() == 0 ? "______" : r) + " 2026";
+              }
+
+              // ---------- screen ----------
+              void build() {
+                  root.addView(tv("২০২৬ • অফিশিয়াল পথে সরাসরি", 13, 0xFF8FB0FF, true));
+                  root.addView(tv("HSC রেজাল্ট ২০২৬", 32, TXT, true), lp(8));
+                  root.addView(tv("এক ট্যাপে দেখুন", 32, ACC, true));
+                  root.addView(tv("অনলাইনে বা SMS-এ, যেভাবে সুবিধা। অফিশিয়াল পথে সরাসরি পৌঁছে দিই, সাথে সম্পূর্ণ গাইড।", 15, MUTED, false), lp(8));
+
+                  LinearLayout stats = new LinearLayout(this);
+                  stats.setOrientation(LinearLayout.HORIZONTAL);
+                  String[][] st = {{"16222", "SMS নম্বর"}, {"১১", "বোর্ড কোড"}, {"২", "অফিশিয়াল সাইট"}};
+                  for (int i = 0; i < st.length; i++) {
+                      LinearLayout cell = new LinearLayout(this);
+                      cell.setOrientation(LinearLayout.VERTICAL);
+                      cell.setGravity(Gravity.CENTER);
+                      cell.setPadding(dp(6), dp(12), dp(6), dp(12));
+                      cell.setBackground(shape(CARD, LINE, 12));
+                      cell.addView(tv(st[i][0], 20, TXT, true));
+                      cell.addView(tv(st[i][1], 12, MUTED, false));
+                      LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+                      if (i > 0) p.leftMargin = dp(8);
+                      stats.addView(cell, p);
+                  }
+                  root.addView(stats, lp(16));
+
+                  // finder
+                  LinearLayout f = card(18);
+                  f.addView(tv("আপনার রেজাল্ট খুঁজুন", 19, TXT, true));
+                  button(f, "অনলাইনে দেখুন (মার্কশিটসহ)", ACC, 0, new Runnable() {
+                      public void run() {
+                          open(ONLINE);
+                      }
+                  });
+
+                  f.addView(tv("SMS-এ দেখুন", 17, TXT, true), lp(20));
+                  f.addView(tv("বোর্ড", 13, MUTED, false), lp(8));
+                  board = new Spinner(this);
+                  ArrayAdapter<String> ad = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, BN);
+                  ad.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                  board.setAdapter(ad);
+                  LinearLayout bw = new LinearLayout(this);
+                  bw.setPadding(dp(8), dp(2), dp(8), dp(2));
+                  bw.setBackground(shape(FIELD, LINE, 10));
+                  bw.addView(board, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+                  f.addView(bw, lp(4));
+
+                  f.addView(tv("রোল নম্বর", 13, MUTED, false), lp(12));
+                  roll = new EditText(this);
+                  roll.setInputType(InputType.TYPE_CLASS_NUMBER);
+                  roll.setHint("যেমন: 123456");
+                  roll.setHintTextColor(MUTED);
+                  roll.setTextColor(TXT);
+                  roll.setTextSize(17);
+                  roll.setSingleLine(true);
+                  roll.setPadding(dp(14), dp(12), dp(14), dp(12));
+                  roll.setBackground(shape(FIELD, LINE, 10));
+                  f.addView(roll, lp(4));
+
+                  prev = fmtView("HSC DHA ______ 2026");
+                  f.addView(prev, lp(12));
+
+                  TextWatcher tw = new TextWatcher() {
+                      public void beforeTextChanged(CharSequence s, int a, int b, int c) {
+                      }
+
+                      public void onTextChanged(CharSequence s, int a, int b, int c) {
+                      }
+
+                      public void afterTextChanged(Editable e) {
+                          roll.setBackground(shape(FIELD, LINE, 10));
+                          prev.setText(msg());
+                      }
+                  };
+                  roll.addTextChangedListener(tw);
+                  board.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+                      public void onItemSelected(android.widget.AdapterView<?> p, View v, int pos, long id) {
+                          prev.setText(msg());
+                      }
+
+                      public void onNothingSelected(android.widget.AdapterView<?> p) {
+                      }
+                  });
+
+                  button(f, "SMS অ্যাপে খুলুন (16222)", 0xFF1F9D6B, 0, new Runnable() {
+                      public void run() {
+                          String r = rollEn();
+                          if (!r.matches("\\d{3,8}")) {
+                              roll.setBackground(shape(FIELD, PINK, 10));
+                              roll.requestFocus();
+                              Toast.makeText(MainActivity.this, "সঠিক রোল নম্বর দিন", Toast.LENGTH_SHORT).show();
+                              return;
+                          }
+                          Intent i = new Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:16222"));
+                          i.putExtra("sms_body", msg());
+                          try {
+                              startActivity(i);
+                          } catch (Exception e) {
+                              Toast.makeText(MainActivity.this, "SMS অ্যাপ পাওয়া যায়নি", Toast.LENGTH_SHORT).show();
+                          }
+                      }
+                  });
+                  button(f, "মেসেজ কপি করুন", 0, LINE, new Runnable() {
+                      public void run() {
+                          ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                          cm.setPrimaryClip(ClipData.newPlainText("sms", msg()));
+                          Toast.makeText(MainActivity.this, "কপি হয়েছে", Toast.LENGTH_SHORT).show();
+                      }
+                  });
+
+                  promo("🎁 বিশেষ অফার দেখুন", PROMO1);
+
+                  LinearLayout c = section("রেজাল্ট দেখার আগে প্রস্তুতি");
+                  bullets(c, new String[]{
+                          "<b>রোল নম্বর:</b> প্রবেশপত্রে লেখা থাকে।",
+                          "<b>রেজিস্ট্রেশন নম্বর:</b> বিস্তারিত ফলাফল ও মার্কশিটের জন্য দরকার। রোল ও রেজি আলাদা, গুলিয়ে ফেলবেন না।",
+                          "<b>বোর্ড ও সাল:</b> নিজের শিক্ষা বোর্ড এবং পরীক্ষার সাল (২০২৬)।",
+                          "<b>ইন্টারনেট বা ব্যালেন্স:</b> অনলাইনের জন্য নেট, SMS-এর জন্য মোবাইলে সামান্য ব্যালেন্স।"});
+                  c.addView(tv("প্রবেশপত্রের ছবি আগেই ফোনে তুলে রাখুন, শেষ মুহূর্তে খুঁজতে হবে না।", 14, MUTED, false), lp(12));
+
+                  c = section("অনলাইনে HSC রেজাল্ট দেখার ধাপ");
+                  steps(c, new String[]{
+                          "অফিশিয়াল সাইট খুলুন: <b>eboardresults.com</b> অথবা <b>educationboardresults.gov.bd</b>",
+                          "<b>Examination</b>-এ HSC/Alim/Equivalent বাছুন।",
+                          "<b>Year</b>-এ ২০২৬ বাছুন।",
+                          "<b>Board</b>-এ নিজের বোর্ড বাছুন।",
+                          "<b>Type of Result</b>-এ Individual/Detailed Result বাছুন।",
+                          "রোল ও রেজিস্ট্রেশন নম্বর লিখুন।",
+                          "ছবিতে দেখা ক্যাপচা সংখ্যাগুলো লিখুন। ঝাপসা হলে \"Click to load another image\" চাপুন।",
+                          "<b>View Result</b> চাপুন। বিষয়ভিত্তিক গ্রেড, GPA ও মার্কশিট দেখা যাবে।"});
+                  c.addView(tv("সাইট খুলতে গিয়ে \"আপনি রোবট নন\" যাচাই দেখালে কয়েক সেকেন্ড অপেক্ষা করুন। কুকি চালু রাখুন।", 14, MUTED, false), lp(12));
+                  button(c, "অনলাইনে রেজাল্ট দেখুন", ACC, 0, new Runnable() {
+                      public void run() {
+                          open(ONLINE);
+                      }
+                  });
+                  button(c, "বিকল্প অফিশিয়াল সাইট", 0, LINE, new Runnable() {
+                      public void run() {
+                          open(ALT);
+                      }
+                  });
+
+                  c = section("SMS-এ HSC রেজাল্ট দেখার নিয়ম");
+                  c.addView(tv(html("মেসেজে লিখুন HSC, বোর্ডের প্রথম তিন অক্ষর, রোল নম্বর ও সাল। প্রতিটার মাঝে স্পেস দিয়ে <b>16222</b> নম্বরে পাঠান।"), 15, TXT, false));
+                  fmt(c, "HSC DHA 123456 2026");
+                  c.addView(tv("কারিগরি ও মাদ্রাসা বোর্ডের উদাহরণ", 15, TXT, true), lp(14));
+                  fmt(c, "HSC TEC 123456 2026");
+                  fmt(c, "HSC MAD 123456 2026");
+                  c.addView(tv("SMS পদ্ধতির টিপস", 15, TXT, true), lp(14));
+                  LinearLayout tips = new LinearLayout(this);
+                  tips.setOrientation(LinearLayout.VERTICAL);
+                  c.addView(tips, lp(8));
+                  bullets(tips, new String[]{
+                          "সব অক্ষর ইংরেজিতে লিখুন, বাংলা সংখ্যা নয়।",
+                          "রোলের আগে-পরে বাড়তি স্পেস দেবেন না।",
+                          "উত্তর আসতে দেরি হলে কিছুক্ষণ পর আবার পাঠান, বারবার পাঠিয়ে খরচ বাড়াবেন না।",
+                          "চার্জ আপনার অপারেটরের নিয়ম অনুযায়ী কাটে।"});
+
+                  c = section("বোর্ড কোড");
+                  for (int i = 0; i < BN.length; i += 2) {
+                      LinearLayout row = new LinearLayout(this);
+                      row.setOrientation(LinearLayout.HORIZONTAL);
+                      for (int j = 0; j < 2; j++) {
+                          LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+                          if (j == 1) p.leftMargin = dp(8);
+                          if (i + j < BN.length) {
+                              LinearLayout cell = new LinearLayout(this);
+                              cell.setOrientation(LinearLayout.HORIZONTAL);
+                              cell.setPadding(dp(12), dp(10), dp(12), dp(10));
+                              cell.setBackground(shape(FIELD, LINE, 10));
+                              TextView n = tv(BN[i + j], 15, TXT, false);
+                              cell.addView(n, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+                              TextView k = tv(CODE[i + j], 15, 0xFF8FB0FF, true);
+                              cell.addView(k);
+                              row.addView(cell, p);
+                          } else {
+                              row.addView(new View(this), p);
+                          }
+                      }
+                      c.addView(row, lp(i == 0 ? 0 : 8));
+                  }
+
+                  c = section("গ্রেড ও GPA বোঝার উপায়");
+                  String[][] g = {{"নম্বর", "গ্রেড", "পয়েন্ট"}, {"৮০–১০০", "A+", "5.00"}, {"৭০–৭৯", "A", "4.00"}, {"৬০–৬৯", "A-", "3.50"},
+                          {"৫০–৫৯", "B", "3.00"}, {"৪০–৪৯", "C", "2.00"}, {"৩৩–৩৯", "D", "1.00"}, {"০–৩২", "F", "0.00"}};
+                  for (int i = 0; i < g.length; i++) {
+                      LinearLayout row = new LinearLayout(this);
+                      row.setOrientation(LinearLayout.HORIZONTAL);
+                      row.setPadding(0, dp(7), 0, dp(7));
+                      for (int j = 0; j < 3; j++) {
+                          TextView t = tv(g[i][j], 15, i == 0 ? 0xFF8FB0FF : TXT, i == 0);
+                          row.addView(t, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+                      }
+                      c.addView(row, lp(0));
+                  }
+                  c.addView(tv("GPA হলো বিষয়গুলোর পয়েন্টের গড়। ঐচ্ছিক বিষয়ের ক্ষেত্রে নির্দিষ্ট নিয়মে অতিরিক্ত পয়েন্ট যোগ হয়। কোনো বিষয়ে F থাকলে সামগ্রিক ফলাফল প্রভাবিত হয়।", 14, MUTED, false), lp(10));
+
+                  c = section("সার্ভার ধীর বা সাইট না খুললে");
+                  bullets(c, new String[]{
+                          "দুটো অফিশিয়াল সাইট পালা করে চেষ্টা করুন।",
+                          "বারবার রিফ্রেশ না করে ২–৫ মিনিট পর আবার দিন। প্রথম ঘণ্টায় চাপ সবচেয়ে বেশি থাকে।",
+                          "SMS পদ্ধতি নিন, ওটা আলাদা সিস্টেমে চলে।",
+                          "অন্য ব্রাউজার বা মোবাইল ডেটা/ওয়াইফাই বদলে দেখুন।",
+                          "প্রতিষ্ঠানের মাধ্যমেও ফলাফল পাওয়া যায়, কলেজে যোগাযোগ করুন।",
+                          "রাতে বা ভোরে চাপ কম থাকে, তখনও চেষ্টা করতে পারেন।"});
+
+                  promo("✨ আরও দরকারি লিংক দেখুন", PROMO2);
+
+                  root.addView(tv("সাধারণ প্রশ্নোত্তর", 20, TXT, true), lp(28));
+                  String[][] faq = {
+                          {"SMS-এ HSC রেজাল্ট কীভাবে দেখব?", "HSC, বোর্ডের প্রথম তিন অক্ষর, রোল নম্বর ও সাল স্পেস দিয়ে লিখে 16222 নম্বরে পাঠান। যেমন: HSC DHA 123456 2026।"},
+                          {"রেজিস্ট্রেশন নম্বর ভুলে গেলে কী করব?", "প্রবেশপত্র বা কলেজের রেকর্ড দেখুন, না পেলে কলেজে যোগাযোগ করুন। SMS-এ শুধু রোল দিয়েও সংক্ষিপ্ত ফলাফল পাওয়া যায়।"},
+                          {"সার্ভার ধীর থাকলে কী করব?", "দুটো অফিশিয়াল সাইট পালা করে চেষ্টা করুন, কয়েক মিনিট পর আবার দিন অথবা SMS পদ্ধতি ব্যবহার করুন।"},
+                          {"মার্কশিটসহ বিস্তারিত রেজাল্ট কোথায় পাব?", "eboardresults.com-এ Individual/Detailed Result বেছে রোল ও রেজিস্ট্রেশন নম্বর দিলে বিষয়ভিত্তিক গ্রেড ও GPA দেখা যায়।"},
+                          {"ক্যাপচা মিলছে না, কী করব?", "\"Click to load another image\" চাপে নতুন ছবি আনুন। শুধু ছবির সংখ্যাগুলো লিখুন, স্পেস ছাড়া।"},
+                          {"ফলাফল নিয়ে আপত্তি থাকলে?", "বোর্ডের নির্ধারিত নিয়মে পুনর্নিরীক্ষণের আবেদন করা যায়। তারিখ ও ফি বোর্ডের অফিশিয়াল বিজ্ঞপ্তি থেকে দেখে নিন।"},
+                          {"এটা কি অফিশিয়াল অ্যাপ?", "না, এটি একটি সহায়ক গাইড। রেজাল্ট বোর্ডের অফিশিয়াল সাইটেই দেখুন এবং রোল-রেজি অন্য কোনো সাইটে দেবেন না।"}};
+                  for (int i = 0; i < faq.length; i++) {
+                      final String q = faq[i][0];
+                      final TextView head = tv("▸  " + q, 15, TXT, true);
+                      final TextView ans = tv(faq[i][1], 14, MUTED, false);
+                      ans.setVisibility(View.GONE);
+                      LinearLayout box = new LinearLayout(this);
+                      box.setOrientation(LinearLayout.VERTICAL);
+                      box.setPadding(dp(16), dp(14), dp(16), dp(14));
+                      box.setBackground(shape(CARD, LINE, 14));
+                      box.addView(head);
+                      box.addView(ans, lp(8));
+                      box.setOnClickListener(new View.OnClickListener() {
+                          public void onClick(View v) {
+                              boolean show = ans.getVisibility() != View.VISIBLE;
+                              ans.setVisibility(show ? View.VISIBLE : View.GONE);
+                              head.setText((show ? "▾  " : "▸  ") + q);
+                          }
+                      });
+                      root.addView(box, lp(i == 0 ? 10 : 8));
+                  }
+
+                  TextView warn = tv("এই অ্যাপ কোনো তথ্য সংরক্ষণ বা সংগ্রহ করে না এবং বোর্ডের সাথে যুক্ত নয়। SMS ফরম্যাট ও নিয়ম বদলাতে পারে, তাই সর্বশেষ নির্দেশনা বোর্ডের অফিশিয়াল বিজ্ঞপ্তি থেকে মিলিয়ে নিন।", 13, 0xFFFFD27A, false);
+                  warn.setPadding(dp(14), dp(12), dp(14), dp(12));
+                  warn.setBackground(shape(0xFF2A2210, 0xFF5A4A1E, 12));
+                  root.addView(warn, lp(24));
+
+                  root.addView(tv("HSC রেজাল্ট ২০২৬ সহায়ক গাইড\nস্পনসর্ড লিংক থাকতে পারে।", 12, MUTED, false), lp(18));
+              }
+
+              TextView fmtView(String s) {
+                  TextView t = tv(s, 17, 0xFF8FB0FF, true);
+                  t.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
+                  t.setGravity(Gravity.CENTER);
+                  t.setPadding(dp(10), dp(12), dp(10), dp(12));
+                  t.setBackground(shape(FIELD, LINE, 10));
+                  return t;
+              }
+          }
+          EOF_7
+
+      - name: Build APK
+        run: gradle assembleDebug --no-daemon --stacktrace
+
+      - name: Rename APK
+        run: cp app/build/outputs/apk/debug/app-debug.apk HSC-Result-2026.apk
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: HSC-Result-APK
+          path: HSC-Result-2026.apk
+
+      - name: Publish release (direct download link)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v${{ github.run_number }}" HSC-Result-2026.apk \
+            --repo "${{ github.repository }}" \
+            --target "${{ github.sha }}" \
+            --title "HSC Result App v${{ github.run_number }}" \
+            --notes "Debug-signed APK. Download HSC-Result-2026.apk and install."
